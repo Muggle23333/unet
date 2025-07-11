@@ -55,27 +55,3 @@ class SeismicDataset(Dataset):
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
     
-def add_white_noise(sequences, noise_level=3.0, add_ratio=0.1, random_seed=42):
-    """
-    对一部分序列加入高幅值白噪声（均值0，标准差为noise_level）。
-    参数:
-        sequences: list of np.array，原始信号归一化后
-        noise_level: float，噪声标准差（建议>=2.0视为高幅值）
-        add_ratio: float，添加噪声的样本比例
-        random_seed: int，随机种子
-    返回:
-        一个与sequences同结构的列表，部分样本已加噪
-    """
-    np.random.seed(random_seed)
-    noisy_sequences = []
-    N = len(sequences)
-    # 随机选择需要加噪的样本索引
-    noisy_indices = np.random.choice(N, size=int(add_ratio*N), replace=False)
-    for i, seq in enumerate(sequences):
-        if i in noisy_indices:
-            noise = np.random.normal(0, noise_level, size=seq.shape)
-            noisy_seq = seq + noise
-            noisy_sequences.append(noisy_seq.astype('float32'))
-        else:
-            noisy_sequences.append(seq)
-    return noisy_sequences

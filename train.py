@@ -86,7 +86,6 @@ def train_model():
     # 1. 数据加载与预处理
     sequences, labels = load_raw_sequences(r'train_data_new')
     X = normalize_sequences(sequences)
-    #X = add_white_noise(sequences, noise_level=3.0, add_ratio=0.1)  # 10%的样本加高噪声
     y = labels
     
     # 2. 数据集划分
