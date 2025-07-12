@@ -81,26 +81,37 @@ class BCEWithRecallLoss(nn.Module):
         recall = tp / (tp + fn + 1e-8)  # 加1e-8防止除0
         loss = bce_loss + self.lambda_recall * (1 - recall)
         return loss
-
+    
 
 def train_model():
     # 1. 数据加载与预处理
-    sequences, labels = load_raw_sequences(r'train_data_new')
+    sequences, labels = load_raw_sequences(r'train_data_new_new')
     X = normalize_sequences(sequences)
     y = labels
     
-    # 2. 数据集划分
-    X_train, X_val, y_train, y_val = train_test_split(
-        X, y, test_size=0.15, random_state=42, stratify=[l[0] for l in labels]  # 按初始标签分层
-    )
+    # 2. 按顺序划分数据集（前85%训练，后15%验证）
+    total_size = len(X)
+    train_size = int(total_size * 5/6)  # 计算训练集大小
     
-    #3. 可视化数据集划分
+    # 顺序划分
+    X_train = X[:train_size]
+    X_val = X[train_size:]
+    y_train = y[:train_size]
+    y_val = y[train_size:]
+    
+    # 3. 可视化数据集划分
     print("\n数据集划分统计:")
-    print(f"训练集样本数: {len(X_train)} | 验证集样本数: {len(X_val)}")
+    print(f"总样本数: {total_size} | 训练集样本数: {len(X_train)} | 验证集样本数: {len(X_val)}")
     print(f"训练集平均长度: {np.mean([len(x) for x in X_train]):.1f}±{np.std([len(x) for x in X_train]):.1f}")
     print(f"验证集平均长度: {np.mean([len(x) for x in X_val]):.1f}±{np.std([len(x) for x in X_val]):.1f}")
+    
+    # 添加类别分布统计（按第一个时间步的标签）
+    train_first_labels = [label[0] for label in y_train]
+    val_first_labels = [label[0] for label in y_val]
+    print(f"训练集首标签分布: 正样本 {sum(train_first_labels)} | 负样本 {len(train_first_labels)-sum(train_first_labels)}")
+    print(f"验证集首标签分布: 正样本 {sum(val_first_labels)} | 负样本 {len(val_first_labels)-sum(val_first_labels)}")
+    
     plot_dataset_split(X_train, X_val, y_train, y_val)
-
 
     # 将地震序列数据封装为 PyTorch 能使用的 标准数据集格式
     train_set = SeismicDataset(X_train, y_train)

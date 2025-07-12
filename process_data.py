@@ -2,7 +2,7 @@ import os
 import pandas as pd
 
 # 输入和输出文件夹
-input_folder = 'test_data2'
+input_folder = 'test_data'
 output_folder = 'test_data_new'
 
 # 创建输出文件夹（如果不存在）

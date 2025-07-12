@@ -44,7 +44,7 @@ def pad_sequences(sequences, max_len=None, value=0.):
     return padded
 
 class SeismicDataset(Dataset):
-    """定长填充后地震数据集"""
+    """将地震序列数据封装为 PyTorch 能使用的 标准数据集格式"""
     def __init__(self, sequences, labels):
         self.X = torch.tensor(sequences, dtype=torch.float32).unsqueeze(1) # [B, 1, L]
         self.y = torch.tensor(labels, dtype=torch.float32).unsqueeze(1)    # [B, 1, L]

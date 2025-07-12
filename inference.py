@@ -56,7 +56,7 @@ class InferDataset(Dataset):
     def __getitem__(self, idx):
         return self.X[idx]
 
-# ============ UNet1D网络定义（与train.py保持一致） ============
+# ============ UNet1D网络定义（通过封装保证了参数与train.py保持一致） ============
 
 import torch.nn as nn
 
@@ -75,6 +75,8 @@ def infer(input_folder, model_ckpt='best_unet_model.pt', scaler_path='scaler.pkl
     model = UNet1D().to(device)
     model.load_state_dict(torch.load(model_ckpt, map_location=device))
     model.eval()
+
+
     # 3. 推理
     os.makedirs(output_folder, exist_ok=True)
     all_preds = []
@@ -115,12 +117,13 @@ def infer(input_folder, model_ckpt='best_unet_model.pt', scaler_path='scaler.pkl
         acc = total_correct / (total_count + 1e-9)
         print(f"Accuracy: {acc:.4f}")
 
-        # ========== 找出准确率最高的100个样本及其准确率 ==========
-        top100_indices = np.argsort(sample_accuracies)[::-1][::]  # 从大到小排序，取前100
+        # ========== 找出准确率最低的100个样本及其准确率 ==========
+        top100_indices = np.argsort(sample_accuracies)[::-1][0:500:1]  # 从大到小排序，取后100
         print("\nTop 100 samples by accuracy:")
         for rank, idx in enumerate(top100_indices, 1):
             print(f"{rank:3d}: Sample {names[idx]} - Accuracy: {sample_accuracies[idx]:.4f}")
-
+        # 保存为npy文件
+        np.save('newbatch.npy', top100_indices)
         return all_preds, acc
 
 if __name__ == "__main__":
