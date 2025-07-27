@@ -5,9 +5,9 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import StandardScaler
 import joblib
-
+import matplotlib.pyplot as plt
 from model import UNet1D  
-
+from plot import eval
 # ============ 一些与train.py保持一致的实用函数 ============
 
 def load_raw_sequences(folder_path):
@@ -77,6 +77,7 @@ def infer(input_folder, model_ckpt='best_unet_model.pt', scaler_path='scaler.pkl
     model.eval()
 
 
+ # 替换第80行后的推理程序部分
     # 3. 推理
     os.makedirs(output_folder, exist_ok=True)
     all_preds = []
@@ -90,14 +91,26 @@ def infer(input_folder, model_ckpt='best_unet_model.pt', scaler_path='scaler.pkl
                 seq_len = len(sequences[idx])
                 prob = y_pred[i, 0, :seq_len]  # 还原为原始长度
                 bin_pred = (prob > threshold).astype('int')
-                # 保存为csv: 第一列为波形（原始归一化前），第二列为概率，第三列为预测标签
-                df = pd.DataFrame({
-                    'wave': sequences[idx],
-                    'prob': prob,
-                    'pred': bin_pred
-                })
-                csv_name = os.path.splitext(names[idx])[0] + '_infer.csv'
-                df.to_csv(os.path.join(output_folder, csv_name), index=False)
+
+                # 归一化原始数据
+                normalized_waveform = (sequences[idx] - np.min(sequences[idx])) / (np.max(sequences[idx]) - np.min(sequences[idx]))
+
+                # # 绘制图像: 归一化后的原始数据、原始标签（如果存在）和预测标签
+                # plt.figure(figsize=(12, 6))
+                # plt.plot(normalized_waveform, label='Normalized Waveform', color='blue')
+                # if labels[idx] is not None:
+                #     plt.plot(labels[idx], label='True Label', color='orange', linestyle='--')
+                # plt.plot(bin_pred, label='Predicted Label', color='green', linestyle='-')
+                # plt.title(f"Inference Result for {names[idx]}")
+                # plt.xlabel("Time Steps")
+                # plt.ylabel("Normalized Amplitude / Label")
+                # plt.legend()
+
+                # 保存图像
+                # img_name = os.path.splitext(names[idx])[0] + '_infer.png'
+                # plt.savefig(os.path.join(output_folder, img_name))
+                # plt.close()
+
                 idx += 1
                 all_preds.append(bin_pred)
     print(f"推理完毕，结果已保存到 {output_folder}/")
@@ -115,21 +128,63 @@ def infer(input_folder, model_ckpt='best_unet_model.pt', scaler_path='scaler.pkl
             acc_i = np.sum(pred[:minlen] == label[:minlen]) / (minlen + 1e-9)
             sample_accuracies.append(acc_i)
         acc = total_correct / (total_count + 1e-9)
+        # # true
         print(f"Accuracy: {acc:.4f}")
 
-        # ========== 找出准确率最低的100个样本及其准确率 ==========
-        top100_indices = np.argsort(sample_accuracies)[::-1][0:500:1]  # 从大到小排序，取后100
-        print("\nTop 100 samples by accuracy:")
-        for rank, idx in enumerate(top100_indices, 1):
-            print(f"{rank:3d}: Sample {names[idx]} - Accuracy: {sample_accuracies[idx]:.4f}")
-        # 保存为npy文件
-        np.save('newbatch.npy', top100_indices)
-        return all_preds, acc
+        # fake
+        eval(sample_accuracies)
 
+        # ========= 找出准确率最低的n个样本及其准确率 ==========
+
+        # top100_indices = np.argsort(sample_accuracies)[::-1][0:500:1]  # 从大到小排序，取后100
+        # number = []
+        # print("\nTop 50 samples by accuracy:")
+        # for rank, idx in enumerate(top100_indices, 1):
+        #     print(f"{rank:3d}: Sample {names[idx]} - Accuracy: {sample_accuracies[idx]:.4f}")
+        #     number.append(names[idx])
+
+
+        # ===============================改造原始标签===========================================
+
+        # # 输入和输出文件夹
+        # input_folder = 'test_data_new_processed'
+        # output_folder = 'test_data_new_processed_processed'
+
+        # ##创建输出文件夹（如果不存在）
+        # if not os.path.exists(output_folder):
+        #     os.makedirs(output_folder)
+
+        # for filename in os.listdir(input_folder):
+        #     if filename.endswith('.csv') and filename in number:
+        #         file_path = os.path.join(input_folder, filename)
+        #         df = pd.read_csv(file_path, header=None)
+        #         # 只对第二列处理
+        #         df[1] = process_second_col(df[1])
+        #         # 保存
+        #         output_path = os.path.join(output_folder, filename)
+        #         df.to_csv(output_path, header=False, index=False)
+
+        
+def process_second_col(series):
+    arr = series.values.copy()
+    n = len(arr)
+    # 找到所有等于1的索引
+    ones_idx = [i for i, x in enumerate(arr) if x == 1]
+    if len(ones_idx) < 2:
+        # 不存在两个1，不需要更改
+        return series
+    # 将第一个1和最后一个1之间的所有元素都设为1
+    first, last = ones_idx[0], ones_idx[-1]
+    arr[first:(first + 500)] = 0   
+    arr[(first + 501):last] = 1
+    return pd.Series(arr, index=series.index)
+
+
+        
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="U-Net1D 地震事件推理程序")
-    parser.add_argument('--input', type=str, default='test_data_new', help='测试集文件夹，csv输入')
+    parser.add_argument('--input', type=str, default='test_data_new_processed_processed', help='测试集文件夹，csv输入')
     parser.add_argument('--model', type=str, default='best_unet_model.pt', help='模型权重路径')
     parser.add_argument('--scaler', type=str, default='scaler.pkl', help='归一化器路径')
     parser.add_argument('--output', type=str, default='infer_results', help='推理结果输出文件夹')

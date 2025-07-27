@@ -53,3 +53,13 @@ def plot_dataset_split(X_train, X_val, y_train, y_val):
     plt.tight_layout()
     plt.savefig('dataset_split.png', dpi=300)
     plt.show()
+
+def eval(sample_accuracies):
+        # ========== 找出准确率最低的100个样本及其准确率 ==========
+    top100_indices = np.argsort(sample_accuracies)[::-1][0:300:1]  # 从大到小排序，取后100
+    total_accuaracy = 0
+    for rank, idx in enumerate(top100_indices, 1):
+        
+        total_accuaracy += sample_accuracies[idx]
+        
+    print(f"Accuracy: {total_accuaracy/len(top100_indices)}")
